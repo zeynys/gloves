@@ -3,9 +3,8 @@ function LoadGlovesPlayerData(player)
     if player:IsFakeClient() then return end
     if not db:IsConnected() then return end
 
-    db:QueryParams("select * from gloves where steamid = '@steamid' limit 1", { steamid = player:GetSteamID() },
-        function(err, result)
-            if #err > 0 then
+    db:QueryBuilder():Table("gloves"):Select({}):Where("steamid", "=", tostring(player:GetSteamID())):Limit(1):Execute(function (err, result)
+        if #err > 0 then
                 return print("ERROR: " .. err)
             end
 
@@ -13,6 +12,20 @@ function LoadGlovesPlayerData(player)
                 player:SetVar("gloves.t", "")
                 player:SetVar("gloves.ct", "")
                 player:SetVar("gloves.data", "{}")
+
+                local params = {
+                    steamid = tostring(player:GetSteamID()),
+                    t = "",
+                    ct = "",
+                    gloves_data = "{}"
+                }
+
+                db:QueryBuilder():Table("gloves"):Insert(params):OnDuplicate(params):Execute(function (err, result)
+                    if #err > 0 then
+                        print("ERROR: " .. err)
+                    end
+                end)
+
             else
                 player:SetVar("gloves.t", result[1].t)
                 player:SetVar("gloves.ct", result[1].ct)
@@ -40,24 +53,16 @@ function UpdatePlayerGloves(player, team, gloveidx)
 
     player:SetVar("gloves." .. team, gloveidx)
 
-    local params = {
-        steamid = player:GetSteamID(),
-        t = "",
-        ct = "",
-    }
-
-    db:QueryParams(
-        "insert ignore into gloves (steamid, t, ct, gloves_data) values ('@steamid', '@t', '@ct', '{}')",
-        params
-    )
 
     params = {
-        steamid = player:GetSteamID(),
-        team = team,
-        gloveidx = gloveidx
+        [team] = gloveidx,
     }
 
-    db:QueryParams("update gloves set `@team` = '@gloveidx' where `steamid` = '@steamid' limit 1", params)
+    db:QueryBuilder():Table("gloves"):Update(params):Where("steamid", "=", tostring(player:GetSteamID())):Limit(1):Execute(function (err, result)
+        if #err > 0 then
+            print("ERROR: " .. err)
+        end
+    end)
 
     GiveGloves(player)
 end
@@ -89,13 +94,11 @@ function UpdatePlayerGlovesData(player, gloveidx, field, value)
 
     player:SetVar("gloves.data", json.encode(glovesData))
 
-    db:QueryParams(
-        "insert ignore into gloves (steamid, t, ct, gloves_data) values ('@steamid', '', '', '{}')",
-        { steamid = player:GetSteamID() }
-    )
-
-    db:QueryParams("update gloves set gloves_data = '@glovesdata' where steamid = '@steamid' limit 1",
-        { glovesdata = json.encode(glovesData), steamid = player:GetSteamID() })
+    db:QueryBuilder():Table("gloves"):Update({gloves_data = json.encode(glovesData)}):Where("steamid", "=", tostring(player:GetSteamID())):Limit(1):Execute(function (err, result)
+        if #err > 0 then
+            print("Error: " .. err)
+        end
+    end)
 
     GiveGloves(player)
 end
