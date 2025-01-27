@@ -4,8 +4,8 @@ AddEventHandler("OnPluginStart", function(event)
 
     db:QueryBuilder():Table("gloves"):Create({
         steamid = "string|max:128|unique",
-        t = "string|max:128|unique",
-        ct = "string|max:128|unique",
+        t = "string|max:128",
+        ct = "string|max:128",
         gloves_data = "json|default:{}"
     }):Execute(function (err, result)
         if #err > 0 then
